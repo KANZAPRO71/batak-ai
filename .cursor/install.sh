@@ -54,7 +54,18 @@ if ! grep -qF "$MARKER" "$BASHRC" 2>/dev/null; then
 fi
 
 # 4. Project dependencies (only when a Gradle project exists) ----------------
+# A committed gradlew means an Android/Gradle project exists. Write a
+# local.properties so Gradle locates the SDK regardless of shell type (the
+# ~/.bashrc export above only reaches login/interactive shells), then warm the
+# dependency cache. local.properties is machine-specific and must never be
+# committed, so ensure it is git-ignored.
 if [ -x "/workspace/gradlew" ]; then
+  echo "==> Pointing Gradle at the SDK (local.properties)"
+  printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > /workspace/local.properties
+  if [ -f /workspace/.gitignore ] && ! grep -qxF "local.properties" /workspace/.gitignore; then
+    echo "local.properties" >> /workspace/.gitignore
+  fi
+
   echo "==> Warming Gradle dependencies"
   (cd /workspace && ANDROID_HOME="$ANDROID_SDK_ROOT" ANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
     ./gradlew --no-daemon help >/dev/null) || true
